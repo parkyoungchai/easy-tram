@@ -6,7 +6,7 @@ import os
 import time
 import io
 
-# 👇 6번째 줄: Gemini API 키 다시 넣어주세요!
+# 👇 6번째 줄: Gemini API 키를 넣어주세요!
 GEMINI_API_KEY = "AIzaSyB-d0aIFMTsQQAsf0_Dm1qupfKOvRsKvo0"
 
 genai.configure(api_key=GEMINI_API_KEY)
@@ -21,15 +21,22 @@ if "chat_history" not in st.session_state:
 if "uploaded_image" not in st.session_state:
     st.session_state.uploaded_image = None
 
-# 🔊 소리 재생 함수 (안정화 버전)
+# 🔊 AI가 말하게 하는 함수 (iOS/모바일 호환성 최적화)
 def speak(text):
     try:
+        # 파일 저장 과정 없이 메모리에서 처리
         tts = gTTS(text=text, lang='ko')
         mp3_fp = io.BytesIO()
         tts.write_to_fp(mp3_fp)
+        
+        # mp3 파일 스트림을 직접 st.audio에 전달
         st.audio(mp3_fp, format='audio/mp3', start_time=0)
-    except Exception:
-        st.warning("🔊 (소리 재생이 원활하지 않을 수 있어유)")
+        
+    except Exception as e:
+        # 재생이 안 될 경우 경고만 띄웁니다.
+        st.warning(f"🔊 (소리 재생이 원활하지 않을 수 있어유. 에러: {e})")
+
+# 🎤 음성 인식 기능은 서버에서 작동하지 않으므로 제거합니다. (안정성 확보)
 
 def show_minwon_button():
     with st.expander("📞 그래도 궁금한 게 남으셨나유?"):
@@ -49,7 +56,7 @@ if uploaded_file:
 
     # [1차 분석]
     if not st.session_state.chat_history:
-        with st.spinner('AI 비서가 분석 중입니다...'):
+        with st.spinner('AI 비서가 사진을 보고 있습니다...'):
             try:
                 prompt = """
                 당신은 어르신을 위한 '교통 안내 비서'입니다.
@@ -69,35 +76,24 @@ if uploaded_file:
             with st.chat_message("assistant", avatar="🤖"):
                 st.write(message['text'])
                 if i == len(st.session_state.chat_history) - 1:
-                     speak(message['text'])
+                     speak(message['text']) # 소리 재생 버튼 표시
                      show_minwon_button()
         else:
              with st.chat_message("user", avatar="👤"):
                 st.write(message['text'])
 
-    # --- [질문 기능 (안정화 버전)] ---
-    st.write("---")
-    # 🎤 마이크 버튼을 삭제하고, 텍스트 입력창만 남겼습니다.
-    # 대신 placeholder(안내 문구)에 팁을 적어줍니다.
+    # --- [추가 질문 기능 (안정화 버전)] ---
+    # 모바일에서 오류가 잦은 마이크 버튼을 제거하고, 텍스트 질문만 남깁니다.
+    # 어르신들은 키보드의 마이크 버튼을 쓰도록 유도합니다.
     user_input = st.chat_input("궁금한 점을 적거나, 키보드의 마이크 버튼을 눌러 말씀해보세요")
 
     if user_input:
-         st.session_state.chat_history.append({"role": "user", "text": user_input})
-         with st.spinner('답변을 생각 중입니다...'):
+        st.session_state.chat_history.append({"role": "user", "text": user_input})
+        with st.spinner('답변을 생각 중입니다...'):
             try:
-                # 이전 대화 맥락을 포함해서 질문하기
-                history_text = "\n".join([f"{msg['role']}: {msg['text']}" for msg in st.session_state.chat_history[-3:]])
-                follow_up_prompt = f"""
-                [이전 대화]
-                {history_text}
-                
-                [새로운 질문]
-                어르신: {user_input}
-                
-                위 흐름을 보고 친절하게 쉬운 우리말로 답변해주세요.
-                """
+                follow_up_prompt = f"어르신 질문: '{user_input}'\n쉽고 친절하게 답변해주세요. (한국어만 사용)"
                 response = model.generate_content([follow_up_prompt, image])
                 st.session_state.chat_history.append({"role": "ai", "text": response.text})
                 st.rerun()
             except Exception as e:
-                st.error(f"오류: {e}")
+                st.error(f"오류가 발생했습니다: {e}")
