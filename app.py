@@ -21,28 +21,34 @@ st.set_page_config(page_title="대전 Easy-Tram", page_icon="🚃", layout="cent
 def get_daejeon_weather():
     try:
         url = f"https://api.openweathermap.org/data/2.5/weather?lat=36.35&lon=127.38&appid={WEATHER_API_KEY}&units=metric&lang=kr"
-        response = requests.get(url).json()
-        if response.get("weather"):
-            desc = response["weather"][0]["description"]
-            temp = round(response["main"]["temp"], 1)
+        response = requests.get(url, timeout=5) # 5초 안에 응답 없으면 넘어감
+        if response.status_code == 200:
+            data = response.json()
+            desc = data["weather"][0]["description"]
+            temp = round(data["main"]["temp"], 1)
             return f"{desc}, {temp}℃"
-        else: return ""
+        return ""
     except: return ""
 
-# 🔊 안정적인 소리 재생 함수 (메모리 스트리밍 방식)
 def speak(text):
     try:
         tts = gTTS(text=text, lang='ko')
         mp3_fp = io.BytesIO()
         tts.write_to_fp(mp3_fp)
-        # 바로 재생 시도 (iOS는 사용자가 재생 버튼을 눌러야 함)
         st.audio(mp3_fp, format='audio/mp3', start_time=0)
-    except:
-        pass # 에러 나도 조용히 넘어감
+    except: pass
 
 def show_minwon_button():
     with st.expander("📞 상담원 연결이 필요하신가요?"):
         st.link_button("👩‍💼 120 콜센터 전화하기", "tel:120", use_container_width=True)
+
+# 🛡️ 사진 용량 줄이는 함수 (안정성 핵심!)
+def resize_image(image, max_width=800):
+    width_percent = (max_width / float(image.size[0]))
+    if width_percent < 1: # 사진이 클 때만 줄임
+        h_size = int((float(image.size[1]) * float(width_percent)))
+        image = image.resize((max_width, h_size), Image.Resampling.LANCZOS)
+    return image
 
 # --- [기억 초기화] ---
 if "mode" not in st.session_state: st.session_state.mode = None
@@ -84,17 +90,18 @@ else:
         st.title("👴 어르신 교통 비서")
         system_prompt = "당신은 어르신을 위한 친절한 '교통 안내 비서'입니다. 쉬운 우리말 존댓말로 안전 정보를 최우선으로 설명해주세요."
 
-    image = None
-    uploaded_file = st.file_uploader("사진을 찍어보세요 (없어도 질문 가능)", type=["jpg", "png", "jpeg"])
+    uploaded_file = st.file_uploader("사진을 찍어보세요", type=["jpg", "png", "jpeg"])
 
     if uploaded_file:
         if st.session_state.uploaded_image != uploaded_file:
             st.session_state.chat_history = []
             st.session_state.uploaded_image = uploaded_file
+        
+        # 🛡️ 여기서 사진을 작게 만듭니다!
         image = Image.open(uploaded_file)
+        image = resize_image(image)
         st.image(image, caption='찍은 사진', use_container_width=True)
 
-        # [사진 첫 분석]
         if not st.session_state.chat_history:
             with st.spinner('분석 중...'):
                 try:
@@ -102,31 +109,32 @@ else:
                     response = model.generate_content([prompt, image])
                     st.session_state.chat_history.append({"role": "ai", "text": response.text})
                     st.rerun()
-                except Exception as e: st.error("잠시 후 다시 시도해주세요.")
+                except Exception as e:
+                    st.error("잠시 연결이 불안정해요. 다시 시도해주세요.")
 
-    # [대화 기록]
     for i, message in enumerate(st.session_state.chat_history):
         role = "assistant" if message["role"] == "ai" else "user"
         avatar = "🤖" if role == "assistant" else "👤"
         with st.chat_message(role, avatar=avatar):
             st.write(message['text'])
-            # 마지막 AI 답변에만 소리 재생기 표시
             if role == "assistant" and i == len(st.session_state.chat_history) - 1:
                 speak(message['text'])
                 if st.session_state.mode == "senior": show_minwon_button()
 
-    # --- [안정적인 질문 기능] ---
-    # 🎤 팁: 모바일에서는 키보드의 마이크 버튼을 누르면 음성 입력이 됩니다.
+    # [질문 기능]
+    # 모바일 키보드 마이크 사용 유도
     user_input = st.chat_input("궁금한 점을 입력하세요 (키보드 마이크 사용 가능)")
-
     if user_input:
         st.session_state.chat_history.append({"role": "user", "text": user_input})
         with st.spinner('답변 준비 중...'):
             try:
                 history = "\n".join([f"{m['role']}: {m['text']}" for m in st.session_state.chat_history[-3:]])
                 prompt = f"{system_prompt}\n[이전 대화]{history}\n[새 질문]{user_input}\n친절하게 답변해주세요."
-                if image: response = model.generate_content([prompt, image])
-                else: response = model.generate_content(prompt)
+                # 사진이 있으면 같이 보내고, 없으면 글자만 보냄 (에러 방지)
+                if uploaded_file:
+                     response = model.generate_content([prompt, image])
+                else:
+                     response = model.generate_content(prompt)
                 st.session_state.chat_history.append({"role": "ai", "text": response.text})
                 st.rerun()
-            except: st.error("오류가 발생했습니다. 다시 질문해주세요.")
+            except: st.error("잠시 연결이 불안정해요. 다시 질문해주세요.")
