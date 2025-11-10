@@ -8,50 +8,36 @@ import io
 import os
 import pandas as pd
 import numpy as np
+from datetime import datetime
 
-# --- [🔑 필수 설정] ---
-GEMINI_API_KEY = "AIzaSyB-d0aIFMTsQQAsf0_Dm1qupfKOvRsKvo0"      # 👇 6번째 줄: Gemini 키
-WEATHER_API_KEY = "49271f92ea332122245325408c2ca765"  # 👇 9번째 줄: 날씨 키
-TASHU_API_KEY = "apj2d20me6jch7sl"    # 👇 12번째 줄: 타슈 키
+# --- [🔑 필수 설정: API 키 3개 입력] ---
+GEMINI_API_KEY = "AIzaSyB-d0aIFMTsQQAsf0_Dm1qupfKOvRsKvo0"      # 👇 6번째 줄: 구글 Gemini 키
+WEATHER_API_KEY = "49271f92ea332122245325408c2ca765"  # 👇 9번째 줄: 날씨 API 키
+TASHU_API_KEY = "apj2d20me6jch7sl"    # 👇 12번째 줄: 타슈 API 키
 
 # --- [AI 설정] ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-flash-latest')
+model = genai.GenerativeModel('models/gemini-flash-latest')
 
 # === 화면 설정 ===
 st.set_page_config(page_title="대전 Easy-Tram", page_icon="🚃", layout="centered")
 
-# 🔥 [CSS 긴급 수정] 더 강력하게 색상 적용 🔥
+# 🔥 [CSS 디자인] 🔥
 st.markdown("""
     <style>
     #MainMenu, footer, header {visibility: hidden;}
-    
-    /* 일반 버튼 스타일 */
-    button[kind="secondary"] {
-        border-radius: 12px !important;
-        height: 3.5em !important;
-        font-weight: bold !important;
-        border: 1px solid #ddd !important;
+    div.stButton > button {
+        width: 100%; border-radius: 12px !important; height: 3.5em !important; font-weight: bold !important;
+        border: 1px solid #ddd !important; transition: all 0.3s ease !important;
     }
-
-    /* 🚨 타슈 버튼(Primary) 강제 초록색 적용 */
-    button[kind="primary"] {
-        background-color: #00C73C !important;
-        border-color: #00C73C !important;
-        color: white !important;
-        border-radius: 12px !important;
-        height: 3.5em !important;
-        font-weight: bold !important;
+    div[data-testid="stButton"] > button[kind="primary"] {
+        background-color: #00C73C !important; border-color: #00C73C !important; color: white !important;
     }
-    button[kind="primary"]:hover {
-        background-color: #009e2f !important;
-        border-color: #009e2f !important;
+    div[data-testid="stButton"] > button[kind="primary"]:hover {
+        background-color: #009e2f !important; border-color: #009e2f !important;
     }
-
-    /* 모드별 버튼 색상 강제 적용 (텍스트 매칭) */
-    div:has(> button p:contains("방문객")) > button { background-color: #007BFF !important; color: white !important; }
-    div:has(> button p:contains("어르신")) > button { background-color: #FF4B4B !important; color: white !important; }
-    
+    div.stButton > button:has(div p:contains("방문객")) { background-color: #007BFF !important; color: white !important; }
+    div.stButton > button:has(div p:contains("어르신")) { background-color: #FF4B4B !important; color: white !important; font-size: 1.3rem !important; }
     .stTextInput > div > div > input { border-radius: 12px; }
     </style>
 """, unsafe_allow_html=True)
@@ -78,9 +64,8 @@ def speak(text):
 
 def show_minwon_button():
     with st.expander("📞 상담원 연결이 필요하신가요?"):
-        st.link_button("👩‍💼 120 콜센터 전화하기", "tel:120", use_container_width=True)
+        st.link_button("👩‍💼 120 상담원 전화하기", "tel:120", use_container_width=True)
 
-# 🚨 [수정] 진짜 에러를 보여주는 함수
 def ask_ai_with_retry(content, retries=3):
     last_error = None
     for _ in range(retries):
@@ -89,7 +74,7 @@ def ask_ai_with_retry(content, retries=3):
         except Exception as e:
             last_error = e
             time.sleep(1)
-    raise last_error # 진짜 에러 메시지를 던짐!
+    raise last_error
 
 def get_mock_tashu_data():
     data = {'lat': [36.3504, 36.3587, 36.3325, 36.3615, 36.3284], 'lon': [127.3845, 127.3848, 127.4342, 127.3546, 127.4213], 'station': ['(예시) 대전시청', '(예시) 정부청사', '(예시) 대전역', '(예시) 유성온천', '(예시) 중앙로'], 'bikes': np.random.randint(3, 15, 5)}
@@ -121,6 +106,7 @@ if "show_tashu" not in st.session_state: st.session_state.show_tashu = False
 # [화면 1] 모드 선택
 # =========================================
 if st.session_state.mode is None:
+    # 🚨 [수정됨] 변수 이름을 c1, c2, c3, c4로 통일했습니다!
     c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
     with c1: st.title("대전 Easy-Tram")
     with c2:
@@ -129,6 +115,20 @@ if st.session_state.mode is None:
         if os.path.exists("한화이글스.jpg"): st.image("한화이글스.jpg", use_container_width=True)
     with c4:
         if os.path.exists("성심당.jpg"): st.image("성심당.jpg", use_container_width=True)
+
+    # 피드백 버튼
+    with st.expander("💬 피드백 및 건의사항 보내기"):
+        feedback = st.text_area("더 좋은 서비스를 위해 의견을 남겨주세요!", height=100)
+        if st.button("의견 보내기"):
+            if feedback:
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with open("feedback.txt", "a", encoding="utf-8") as f:
+                    f.write(f"[{now}] {feedback}\n")
+                st.success("소중한 의견 감사합니다!")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.warning("내용을 입력해주세요.")
 
     st.subheader("반갑습니다! 어떤 도움이 필요하신가요?")
     weather = get_daejeon_weather()
@@ -183,7 +183,7 @@ else:
         with c1: st.title("👴 어르신 교통 비서")
         with c2:
              if os.path.exists("꿈돌이.jpg"): st.image("꿈돌이.jpg", width=80)
-        system_prompt = "당신은 대전의 마스코트 '꿈돌이'입니다. 어르신을 위해 이모티콘 없이 쉽고 천천히 설명해주세요."
+        system_prompt = "당신은 대전의 마스코트 '꿈돌이'입니다. 어르신을 위해 쉽고 천천히 설명해주세요."
 
     image = None
     uploaded_file = st.file_uploader("사진을 찍어보세요 (없어도 질문 가능)", type=["jpg", "png", "jpeg"])
@@ -193,18 +193,17 @@ else:
             st.session_state.chat_history = []
             st.session_state.uploaded_image = uploaded_file
         image = Image.open(uploaded_file)
-        st.image(image, caption='찍은 사진', use_container_width=True)
+        st.image(image, caption='찍은 사진', use_column_width=True)
 
         if not st.session_state.chat_history:
             with st.spinner('분석 중...'):
                 try:
-                    prompt = f"{system_prompt}\n이 사진을 보고 핵심 내용을 3문장으로 아주 쉽게 설명해주세요."
+                    prompt = f"{system_prompt}\n이 사진을 보고 핵심 내용을 문장으로 아주 쉽게 설명해주세요."
                     response = ask_ai_with_retry([prompt, image])
                     st.session_state.chat_history.append({"role": "ai", "text": response.text})
                     st.rerun()
                 except Exception as e:
-                    # 🚨 진짜 에러 메시지 출력!
-                    st.error(f"🚨 에러 상세 내용: {e}")
+                    st.error(f"🚨 에러 발생: {e}")
 
     for i, message in enumerate(st.session_state.chat_history):
         role = "assistant" if message["role"] == "ai" else "user"
@@ -230,5 +229,4 @@ else:
                 st.session_state.chat_history.append({"role": "ai", "text": response.text})
                 st.rerun()
             except Exception as e:
-                # 🚨 진짜 에러 메시지 출력!
-                st.error(f"🚨 에러 상세 내용: {e}")
+                st.error(f"🚨 에러 발생: {e}")
