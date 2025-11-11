@@ -18,7 +18,7 @@ SHEETDB_URL = "https://sheetdb.io/api/v1/YOUR_API_KEY" # 👇 SheetDB URL
 
 # --- [AI 설정] ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+model = genai.GenerativeModel('models/gemini-flash-latest')
 
 # === 화면 설정 ===
 st.set_page_config(page_title="대전 이지(Daejeon-Easy)", page_icon="🚃", layout="centered")
