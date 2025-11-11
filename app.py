@@ -54,7 +54,7 @@ st.markdown("""
 TEXTS = {
     "ko": {
         "welcome": "반갑습니다! 어떤 도움이 필요하신가요?", "feedback_title": "💬 피드백 및 건의사항 보내기", "feedback_placeholder": "더 좋은 서비스를 위해 의견을 남겨주세요!", "feedback_button": "의견 보내기", "feedback_success": "✅ 소중한 의견이 안전하게 저장되었습니다!", "weather_prefix": "🌤️ 현재 대전 날씨:",
-        "visitor_button": "🧳 대전 방문객\n(AI 비서 모드)", "senior_button": "👴 어르신 도우미\n(AI 비서 모드)",
+        "visitor_button": "🧳 대전 방문객", "senior_button": "👴 어르신 도우미",
         "tashu_button": "🚲 내 주변 '타슈' 찾기", "tashu_loading": "🚲 타슈 위치를 찾는 중...", "tashu_success": "✅ 실시간 타슈 {count}곳을 찾았습니다!", "tashu_expander": "📋 대여소별 잔여 대수 보기", "tashu_station_col": "대여소명", "tashu_bikes_col": "잔여대수", "tashu_mock_warning": "⚠️ 현재 '시뮬레이션 데이터'를 보여줍니다.",
         "festival_button": "🎉 대전 축제 보기", "festival_title": "🎉 대전시 추천 축제 정보", "festival_body": "대전은 1년 내내 즐거운 축제가 가득합니다!\n- **대전 0시 축제 (8월):** 대전역~중앙로 일대\n- **대전 빵 축제 (5월/10월):** 서대전공원 근처\n- **유성온천 문화축제 (5월):** 유성온천역 근처\n- **대전 사이언스 페스티벌 (10월):** 엑스포과학공원",
         "places_button": "🏞️ 대전 명소 추천", "places_title": "🏞️ 대전 추천 명소 TOP 5", "places_body": "AI 비서에게 사진이나 글로 물어보면 자세한 코스를 알려드려요!\n- **한밭수목원:** 도심 속 최대 수목원\n- **엑스포과학공원:** 한빛탑과 음악분수\n- **성심당:** 대전의 자부심, 빵지순례 필수!\n- **소제동 카페거리:** 감성적인 데이트 코스\n- **유성온천 족욕장:** 여행의 피로를 푸는 곳",
@@ -174,7 +174,7 @@ if st.session_state.mode is None:
     if weather: st.info(f"{t['weather_prefix']} **{weather}**")
     st.write("---")
     
-    st.markdown("##### **AI 비서 모드 (사진/음성 질문)**")
+    st.markdown("##### **친절한 설명 (사진/음성 질문)**")
     c1, c2 = st.columns(2)
     with c1:
         if st.button(t["visitor_button"], use_container_width=True):
